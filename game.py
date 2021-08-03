@@ -1,4 +1,5 @@
 import arcade
+from math import *
 
 # Constants
 TILE_WIDTH = 64
@@ -47,6 +48,7 @@ class weapon(arcade.Sprite):
             texture = load_texture_pair(f"{main_path}{i}.png")
             self.swing_textures.append(texture)
 
+
     def update_animation(self, delta_time: float = 1/60):
         # Idle weapon
         if not self.attack:
@@ -58,6 +60,7 @@ class weapon(arcade.Sprite):
             self.cur_weapon_texture += 1
             if self.cur_weapon_texture > 3 * UPDATES_PER_FRAME - 1:
                 self.cur_weapon_texture = 0
+                self.angle = 0
                 self.attack = False
             frame = self.cur_weapon_texture // UPDATES_PER_FRAME
             direction = self.face_dir
@@ -78,7 +81,8 @@ class PlayerCharacter(arcade.Sprite):
         self.cur_texture = 0
 
         self.scale = 1
-
+        self.mouse_pos_x = 0
+        self.mouse_pos_y = 0
         # Adjust the collision box. Default includes too much empty space
         # side-to-side. Box is centered at sprite center, (0, 0)
         self.points = [[-22, -64], [22, -64], [22, 28], [-22, 28]]
@@ -111,16 +115,31 @@ class PlayerCharacter(arcade.Sprite):
             texture = load_texture_pair(f"{main_path}{i}.png")
             self.walk_textures.append(texture)
 
+    def findAngle(self, x, y):
+        self.mouse_pos_x = x
+        self.mouse_pos_y = y
+        self.vector_x = self.mouse_pos_x - SCREEN_WIDTH/2
+        self.vector_y = self.mouse_pos_y - SCREEN_HEIGHT/2
+        self.weapons.angle = degrees(atan(self.vector_y/self.vector_x))
+
     #Netušim co se tu děje
     def update_animation(self, delta_time: float = 1 / 60):
 
         # Figure out if we need to flip face left or right
-        if self.change_x < 0 and self.character_face_direction == RIGHT_FACING:
-            self.character_face_direction = LEFT_FACING
-            self.weapons.face_dir = LEFT_FACING
-        elif self.change_x > 0 and self.character_face_direction == LEFT_FACING:
-            self.character_face_direction = RIGHT_FACING
-            self.weapons.face_dir = RIGHT_FACING
+        if self.weapons.attack == True:
+            if self.mouse_pos_x < SCREEN_WIDTH/2 and self.character_face_direction == RIGHT_FACING:
+                self.character_face_direction = LEFT_FACING
+                self.weapons.face_dir = LEFT_FACING
+            elif self.mouse_pos_x > SCREEN_WIDTH/2 and self.character_face_direction == LEFT_FACING:
+                self.character_face_direction = RIGHT_FACING
+                self.weapons.face_dir = RIGHT_FACING
+        else:
+            if self.change_x < 0 and self.character_face_direction == RIGHT_FACING:
+                self.character_face_direction = LEFT_FACING
+                self.weapons.face_dir = LEFT_FACING
+            elif self.change_x > 0 and self.character_face_direction == LEFT_FACING:
+                self.character_face_direction = RIGHT_FACING
+                self.weapons.face_dir = RIGHT_FACING
 
         # Idle stand animation
         if self.change_x == 0 and self.change_y == 0:
@@ -294,10 +313,6 @@ class MyGame(arcade.Window):
         self.player.shadow_list.draw()
         self.player_list.draw()
         self.player.weapon_list.draw()
-        print(self.player.center_x)
-        print(self.player.center_y)
-        print(self.player.weapons.center_x)
-        print(self.player.weapons.center_y)
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -355,6 +370,8 @@ class MyGame(arcade.Window):
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
             self.player.weapons.attack = True
+            self.player.findAngle(x, y)
+
 
 
 
