@@ -24,6 +24,46 @@ def load_texture_pair(filename):
         arcade.load_texture(filename, flipped_horizontally=True)
     ]
 
+class weapon(arcade.Sprite):
+
+    def __init__(self):
+        super().__init__()
+        self.attack = False
+        self.cur_weapon_texture = 0
+        self.face_dir = RIGHT_FACING
+        self.scale = 2
+
+
+    def giveWeapon(self,player_x, player_y):
+
+        main_path = "sword/sword"
+
+        # Load textures for idle weapon
+        self.idle_texture_pair = load_texture_pair(f"{main_path}1.png")
+
+        # Load textures for weapon swing
+        self.swing_textures = []
+        for i in range(1, 4):
+            texture = load_texture_pair(f"{main_path}{i}.png")
+            self.swing_textures.append(texture)
+
+    def update_animation(self, delta_time: float = 1/60):
+        # Idle weapon
+        if not self.attack:
+            self.texture = self.idle_texture_pair[self.face_dir]
+            return
+
+        # Weapon swing
+        if self.attack:
+            self.cur_weapon_texture += 1
+            if self.cur_weapon_texture > 3 * UPDATES_PER_FRAME - 1:
+                self.cur_weapon_texture = 0
+                self.attack = False
+            frame = self.cur_weapon_texture // UPDATES_PER_FRAME
+            direction = self.face_dir
+            self.texture = self.swing_textures[frame][direction]
+
+
 
 class PlayerCharacter(arcade.Sprite):
     def __init__(self):
@@ -44,7 +84,13 @@ class PlayerCharacter(arcade.Sprite):
         self.points = [[-22, -64], [22, -64], [22, 28], [-22, 28]]
 
         self.shadow_list = arcade.SpriteList()
+
         self.weapon_list = arcade.SpriteList()
+        self.weapons = weapon()
+        self.weapons.center_x = 32 + TILE_WIDTH + 5
+        self.weapons.center_y = 32 - TILE_WIDTH - 5
+        self.weapon_list.append(self.weapons)
+
         # --- Load Textures ---
 
         # Images from Kenney.nl's Asset Pack 3
@@ -58,6 +104,7 @@ class PlayerCharacter(arcade.Sprite):
         # Load textures for idle standing
         self.idle_texture_pair = load_texture_pair(f"{main_path}1.png")
 
+
         # Load textures for walking
         self.walk_textures = []
         for i in range(1,5):
@@ -70,10 +117,12 @@ class PlayerCharacter(arcade.Sprite):
         # Figure out if we need to flip face left or right
         if self.change_x < 0 and self.character_face_direction == RIGHT_FACING:
             self.character_face_direction = LEFT_FACING
+            self.weapons.face_dir = LEFT_FACING
         elif self.change_x > 0 and self.character_face_direction == LEFT_FACING:
             self.character_face_direction = RIGHT_FACING
+            self.weapons.face_dir = RIGHT_FACING
 
-        # Idle animation
+        # Idle stand animation
         if self.change_x == 0 and self.change_y == 0:
             self.texture = self.idle_texture_pair[self.character_face_direction]
             return
@@ -86,11 +135,7 @@ class PlayerCharacter(arcade.Sprite):
         direction = self.character_face_direction
         self.texture = self.walk_textures[frame][direction]
 
-    def giveWeapon(self):
-        self.sword = arcade.Sprite("sword_stationary.png", 1.5)
-        self.sword.center_x = self.center_x + 5
-        self.sword.center_y = self.center_y - 5
-        self.weapon_list.append(self.sword)
+
 
     def createShadow(self):
 
@@ -232,7 +277,8 @@ class MyGame(arcade.Window):
         self.player.center_y = 32 - TILE_WIDTH
         self.player_list.append(self.player)
         self.player.createShadow()
-        self.player.giveWeapon()
+        self.player.weapons.giveWeapon(self.player.center_x, self.player.center_y)
+
 
         #self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.collider_list, gravity_constant = 0)
 
@@ -248,6 +294,10 @@ class MyGame(arcade.Window):
         self.player.shadow_list.draw()
         self.player_list.draw()
         self.player.weapon_list.draw()
+        print(self.player.center_x)
+        print(self.player.center_y)
+        print(self.player.weapons.center_x)
+        print(self.player.weapons.center_y)
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -276,6 +326,7 @@ class MyGame(arcade.Window):
         elif self.right_pressed and not self.left_pressed and len(self.player.shadowRight.collides_with_list(self.tile_list)) > 0:
             self.player.change_x = MOVEMENT_SPEED
 
+
         """
         collisionlist = arcade.check_for_collision_with_list(self.shadow_list, self.collider_list)
 
@@ -288,6 +339,7 @@ class MyGame(arcade.Window):
 
         self.player_list.update()
         self.player_list.update_animation()
+        self.player.weapon_list.update_animation()
 
 
         # Call update to move the sprite
@@ -299,6 +351,11 @@ class MyGame(arcade.Window):
                             self.player.center_x + SCREEN_WIDTH/2,
                             self.player.center_y - SCREEN_HEIGHT/2,
                             self.player.center_y + SCREEN_HEIGHT/2)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            self.player.weapons.attack = True
+
 
 
     def on_key_press(self, key, modifiers):
