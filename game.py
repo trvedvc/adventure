@@ -60,7 +60,6 @@ class weapon(arcade.Sprite):
             self.cur_weapon_texture += 1
             if self.cur_weapon_texture > 3 * UPDATES_PER_FRAME - 1:
                 self.cur_weapon_texture = 0
-                self.angle = 0
                 self.attack = False
             frame = self.cur_weapon_texture // UPDATES_PER_FRAME
             direction = self.face_dir
@@ -120,11 +119,19 @@ class PlayerCharacter(arcade.Sprite):
         self.mouse_pos_y = y
         self.vector_x = self.mouse_pos_x - SCREEN_WIDTH/2
         self.vector_y = self.mouse_pos_y - SCREEN_HEIGHT/2
-        self.weapons.angle = degrees(atan(self.vector_y/self.vector_x))
+        if self.vector_x != 0:
+            self.weapons.angle = degrees(atan(self.vector_y/self.vector_x))
+        else:
+            print(self.mouse_pos_y, SCREEN_HEIGHT / 2, self.vector_y, self.weapons.angle)
+            if self.mouse_pos_y < SCREEN_HEIGHT / 2:
+                self.weapons.angle = 270
+            elif self.mouse_pos_y > SCREEN_HEIGHT / 2:
+                self.weapons.angle = 90
 
     #Netušim co se tu děje
     def update_animation(self, delta_time: float = 1 / 60):
 
+        """
         # Figure out if we need to flip face left or right
         if self.weapons.attack == True:
             if self.mouse_pos_x < SCREEN_WIDTH/2 and self.character_face_direction == RIGHT_FACING:
@@ -140,7 +147,7 @@ class PlayerCharacter(arcade.Sprite):
             elif self.change_x > 0 and self.character_face_direction == LEFT_FACING:
                 self.character_face_direction = RIGHT_FACING
                 self.weapons.face_dir = RIGHT_FACING
-
+        """
         # Idle stand animation
         if self.change_x == 0 and self.change_y == 0:
             self.texture = self.idle_texture_pair[self.character_face_direction]
@@ -368,12 +375,17 @@ class MyGame(arcade.Window):
                             self.player.center_y + SCREEN_HEIGHT/2)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if button == arcade.MOUSE_BUTTON_LEFT:
-            self.player.weapons.attack = True
-            self.player.findAngle(x, y)
+        self.player.weapons.attack = True
+        self.player.findAngle(x, y)
 
-
-
+    def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
+        self.player.findAngle(x, y)
+        if x < SCREEN_WIDTH/2 and self.player.character_face_direction == RIGHT_FACING:
+            self.player.character_face_direction = LEFT_FACING
+            self.player.weapons.face_dir = LEFT_FACING
+        elif x > SCREEN_WIDTH/2 and self.player.character_face_direction == LEFT_FACING:
+            self.player.character_face_direction = RIGHT_FACING
+            self.player.weapons.face_dir = RIGHT_FACING
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
