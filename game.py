@@ -1,6 +1,5 @@
 import arcade
 from math import *
-
 # Constants
 TILE_WIDTH = 64
 TILECOUNTX = 15
@@ -8,7 +7,7 @@ TILECOUNTY = 8
 SCREEN_WIDTH = TILECOUNTX * TILE_WIDTH
 SCREEN_HEIGHT = TILECOUNTY * TILE_WIDTH
 
-SCREEN_TITLE = "Lololoolol"
+SCREEN_TITLE = "adventure"
 
 MOVEMENT_SPEED = 2
 UPDATES_PER_FRAME = 8
@@ -16,16 +15,29 @@ UPDATES_PER_FRAME = 8
 RIGHT_FACING = 0
 LEFT_FACING = 1
 
+
 def load_texture_pair(filename):
     """
-    Load a texture pair, with the second being a mirror image.
+    Load a texture pair, with the second being a mirror image of the first.
+    Useful when doing animations and the character can face left/right.
     """
     return [
         arcade.load_texture(filename),
-        arcade.load_texture(filename, flipped_horizontally=True)
-    ]
+        arcade.load_texture(filename,
+                     flipped_horizontally=True)
+        ]
 
-class weapon(arcade.Sprite):
+class Enemy(arcade.Sprite):
+
+    def __init__(self):
+        super().__init__()
+        self.scale = 1
+        self.health = 5
+        self.texture = arcade.load_texture("ememy.png")
+    #def enemyHealthBar(self):
+
+
+class Weapon(arcade.Sprite):
 
     def __init__(self):
         super().__init__()
@@ -35,7 +47,7 @@ class weapon(arcade.Sprite):
         self.scale = 2
 
 
-    def giveWeapon(self,player_x, player_y):
+    def giveWeapon(self, player_x, player_y):
 
         main_path = "sword/sword"
 
@@ -66,7 +78,6 @@ class weapon(arcade.Sprite):
             self.texture = self.swing_textures[frame][direction]
 
 
-
 class PlayerCharacter(arcade.Sprite):
     def __init__(self):
 
@@ -80,8 +91,10 @@ class PlayerCharacter(arcade.Sprite):
         self.cur_texture = 0
 
         self.scale = 1
+
         self.mouse_pos_x = 0
         self.mouse_pos_y = 0
+
         # Adjust the collision box. Default includes too much empty space
         # side-to-side. Box is centered at sprite center, (0, 0)
         self.points = [[-22, -64], [22, -64], [22, 28], [-22, 28]]
@@ -89,24 +102,20 @@ class PlayerCharacter(arcade.Sprite):
         self.shadow_list = arcade.SpriteList()
 
         self.weapon_list = arcade.SpriteList()
-        self.weapons = weapon()
+        self.weapons = Weapon()
         self.weapons.center_x = 32 + TILE_WIDTH + 5
         self.weapons.center_y = 32 - TILE_WIDTH - 5
         self.weapon_list.append(self.weapons)
 
+
         # --- Load Textures ---
+
 
         # Images from Kenney.nl's Asset Pack 3
         main_path = "player_moves/player"
-        # main_path = ":resources:images/animated_characters/female_person/femalePerson"
-        # main_path = ":resources:images/animated_characters/male_person/malePerson"
-        # main_path = ":resources:images/animated_characters/male_adventurer/maleAdventurer"
-        # main_path = ":resources:images/animated_characters/zombie/zombie"
-        # main_path = ":resources:images/animated_characters/robot/robot"
 
         # Load textures for idle standing
         self.idle_texture_pair = load_texture_pair(f"{main_path}1.png")
-
 
         # Load textures for walking
         self.walk_textures = []
@@ -115,6 +124,7 @@ class PlayerCharacter(arcade.Sprite):
             self.walk_textures.append(texture)
 
     def findAngle(self, x, y):
+
         self.mouse_pos_x = x
         self.mouse_pos_y = y
         self.vector_x = self.mouse_pos_x - SCREEN_WIDTH/2
@@ -148,7 +158,7 @@ class PlayerCharacter(arcade.Sprite):
                 self.character_face_direction = RIGHT_FACING
                 self.weapons.face_dir = RIGHT_FACING
         """
-        # Idle stand animation
+        # Idle animation
         if self.change_x == 0 and self.change_y == 0:
             self.texture = self.idle_texture_pair[self.character_face_direction]
             return
@@ -161,37 +171,26 @@ class PlayerCharacter(arcade.Sprite):
         direction = self.character_face_direction
         self.texture = self.walk_textures[frame][direction]
 
-
-
     def createShadow(self):
 
-        self.shadowCenter = arcade.Sprite("shadowCenter.png", 0.5)  # 15x3
-        self.shadowCenter.center_x = self.center_x
-        self.shadowCenter.center_y = self.center_y - 19
-        self.shadow_list.append(self.shadowCenter)
+        self.shadowCenter = arcade.Sprite("shadow/shadowCenter.png", 0.5)
+        self.shadowTop = arcade.Sprite("shadow/shadow1.png", 0.5)
+        self.shadowBot = arcade.Sprite("shadow/shadow1.png", 0.5)
+        self.shadowLeft = arcade.Sprite("shadow/shadow2.png", 0.5)
+        self.shadowRight = arcade.Sprite("shadow/shadow2.png", 0.5)
 
-        self.shadowLeft = arcade.Sprite("shadowSide.png", 0.5)  # 5x3
-        self.shadowLeft.center_x = self.shadowCenter.center_x - 13 / 2
-        self.shadowLeft.center_y = self.shadowCenter.center_y
-        self.shadow_list.append(self.shadowLeft)
+        flip = False
+        shadows = [self.shadowTop, self.shadowBot, self.shadowLeft, self.shadowRight, self.shadowCenter]
 
-        self.shadowRight = arcade.Sprite("shadowSide.png", 0.5)
-        self.shadowRight.angle = 180
-        self.shadowRight.center_x = self.shadowCenter.center_x + 13 / 2
-        self.shadowRight.center_y = self.shadowCenter.center_y
-        self.shadow_list.append(self.shadowRight)
-
-        self.shadowTop = arcade.Sprite("shadowTop.png", 0.5)  # 15x2
-        self.shadowTop.center_x = self.shadowCenter.center_x
-        self.shadowTop.center_y = self.shadowCenter.center_y + 3 / 2
-        self.shadow_list.append(self.shadowTop)
-
-        self.shadowBot = arcade.Sprite("shadowTop.png", 0.5)
-        self.shadowBot.angle = 180
-        self.shadowBot.center_x = self.shadowCenter.center_x
-        self.shadowBot.center_y = self.shadowCenter.center_y - 3 / 2
-        self.shadow_list.append(self.shadowBot)
-
+        for shadow in shadows:
+            if flip:
+                shadow.angle = 180
+                flip = False
+            else:
+                flip = True
+            shadow.center_x = self.center_x
+            shadow.center_y = self.center_y - 19
+            self.shadow_list.append(shadow)
 
     def getShadowCenter(self):
         return [self.shadowCenter.center_x,self.shadowCenter.center_y]
@@ -206,7 +205,6 @@ class PlayerCharacter(arcade.Sprite):
 
         self.shadow_list.move(self.change_x, self.change_y)
         self.weapon_list.move(self.change_x, self.change_y)
-
 
 class MyGame(arcade.Window):
 
@@ -223,6 +221,8 @@ class MyGame(arcade.Window):
         self.listLogicalMap = []
 
         self.creatingGraphicalMapByLogicalMap(self.listLogicalMap)
+
+        self.enemy_list = arcade.SpriteList()
 
         self.left_pressed = False
         self.right_pressed = False
@@ -255,10 +255,10 @@ class MyGame(arcade.Window):
 
                     #pokud se stane, že políčko vedle právě vykreslovaného je prázdné, tak se správně otočí a zobrazí textura zdi
                                             # ktery CounterList, horni/spodni rada, yCounter check, xCounter check, úhel
-                    RotationPossibilities = [[yCounterList, 0, -1, 0,-90],
-                                             [xCounterList, 0,  0 , -1,0],
-                                             [yCounterList, len(listLogicalMap) - 1, 1, 0,90],
-                                             [xCounterList, len(listLogicalMap[0])- 1, 0, 1, 180]]
+                    RotationPossibilities = [[yCounterList, 0, -1, 0,-90], #top
+                                             [xCounterList, 0,  0 , -1,0], #left
+                                             [yCounterList, len(listLogicalMap) - 1, 1, 0,90], #bottom
+                                             [xCounterList, len(listLogicalMap[0])- 1, 0, 1, 180]] #right
 
                     for indexRotationPossibilities in RotationPossibilities:
                         irp = indexRotationPossibilities
@@ -269,8 +269,11 @@ class MyGame(arcade.Window):
                             tile_wall.center_y = y
                             self.tile_list.append(tile_wall)
 
-                            tile_invisible_barrier = arcade.Sprite("invisible_wall_barrier.png", 0.5)
-                            tile_invisible_barrier.angle = irp[4]
+                            if irp[4] == -90:
+                                tile_invisible_barrier = arcade.Sprite("invisible_wall_barrierT.png", 0.5)
+                            else:
+                                tile_invisible_barrier = arcade.Sprite("invisible_wall_barrierLRB.png", 0.5)
+                                tile_invisible_barrier.angle = irp[4]
                             tile_invisible_barrier.center_x = x
                             tile_invisible_barrier.center_y = y
                             tile_invisible_barrier.alpha = 0
@@ -290,14 +293,21 @@ class MyGame(arcade.Window):
             yCounterList += 1
             xCounterList = 0
 
+    def spawnEnemy(self, coords):
+
+        enemy = Enemy()
+        enemy.center_x, enemy.center_y = coords
+        self.enemy_list.append(enemy)
+
     def set_vsync(self, vsync: bool):
         """ Set if we sync our draws to the monitors vertical sync rate. """
         super().set_vsync(vsync)
 
     def setup(self):
         """ Set up the game here. Call this function to restart the game. """
-        self.player_list = arcade.SpriteList()
 
+        # Setup player
+        self.player_list = arcade.SpriteList()
         self.player = PlayerCharacter()
         self.player.center_x = 32 + TILE_WIDTH
         self.player.center_y = 32 - TILE_WIDTH
@@ -305,6 +315,8 @@ class MyGame(arcade.Window):
         self.player.createShadow()
         self.player.weapons.giveWeapon(self.player.center_x, self.player.center_y)
 
+        # Setup enemies
+        self.spawnEnemy([32 + TILE_WIDTH * 2, 32 - TILE_WIDTH])
 
         #self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.collider_list, gravity_constant = 0)
 
@@ -315,11 +327,22 @@ class MyGame(arcade.Window):
         arcade.start_render()
         # Code to draw the screen goes here
 
+        # Draw map
         self.tile_list.draw()
         self.collider_list.draw()
+
+        # Draw player
         self.player.shadow_list.draw()
         self.player_list.draw()
         self.player.weapon_list.draw()
+
+        # Draw enemy
+        self.enemy_list.draw()
+
+        # Draw hitboxes
+        self.player.draw_hit_box()
+        self.player.weapon_list.draw_hit_boxes()
+        self.enemy_list.draw_hit_boxes()
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -334,35 +357,22 @@ class MyGame(arcade.Window):
         self.player.change_x = 0
         self.player.change_y = 0
 
-
-
-
-        #print(self.player.center_x, self.player.center_y)
-
-        if self.up_pressed and not self.down_pressed and len(self.player.shadowTop.collides_with_list(self.tile_list)) > 0:
+        if self.up_pressed and not self.down_pressed and len(self.player.shadowTop.collides_with_list(self.tile_list)) > 0 and len(arcade.check_for_collision_with_list(self.player.shadowTop, self.collider_list)) < 1:
             self.player.change_y = MOVEMENT_SPEED
-        elif self.down_pressed and not self.up_pressed and len(self.player.shadowBot.collides_with_list(self.tile_list)) > 0:
+        elif self.down_pressed and not self.up_pressed and len(self.player.shadowBot.collides_with_list(self.tile_list)) > 0 and len(arcade.check_for_collision_with_list(self.player.shadowBot, self.collider_list)) < 1:
             self.player.change_y = -MOVEMENT_SPEED
-        if self.left_pressed and not self.right_pressed and len(self.player.shadowLeft.collides_with_list(self.tile_list)) > 0:
+        if self.left_pressed and not self.right_pressed and len(self.player.shadowLeft.collides_with_list(self.tile_list)) > 0 and len(arcade.check_for_collision_with_list(self.player.shadowLeft, self.collider_list)) < 1:
             self.player.change_x = -MOVEMENT_SPEED
-        elif self.right_pressed and not self.left_pressed and len(self.player.shadowRight.collides_with_list(self.tile_list)) > 0:
+        elif self.right_pressed and not self.left_pressed and len(self.player.shadowRight.collides_with_list(self.tile_list)) > 0 and len(arcade.check_for_collision_with_list(self.player.shadowRight, self.collider_list)) < 1:
             self.player.change_x = MOVEMENT_SPEED
 
+        if len(arcade.check_for_collision_with_list(self.player.shadowCenter, self.collider_list)) > 0:
+            print("Vlezl jsi do bariéry. GG WP")
 
-        """
-        collisionlist = arcade.check_for_collision_with_list(self.shadow_list, self.collider_list)
-
-        if len(collisionlist) > 0:
-            self.player.collision_Detected = True
-            print("uu")
-        else:
-            self.player.collision_Detected = False
-        """
 
         self.player_list.update()
         self.player_list.update_animation()
         self.player.weapon_list.update_animation()
-
 
         # Call update to move the sprite
         # If using a physics engine, call update player to rely on physics engine
