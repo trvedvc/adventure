@@ -46,10 +46,25 @@ class Enemy(arcade.Sprite):
 
     def __init__(self):
         super().__init__()
-        self.scale = 1
-        self.health = 5
+
+        self.hp_max = 5
+        self.hp_cur = self.hp_max
         self.texture = arcade.load_texture("ememy.png")
-    #def enemyHealthBar(self):
+        self.healthBar = arcade.ShapeElementList()
+
+        self.can_be_hit = True
+
+
+    def update_healthBar(self): # game function? TODO
+        hp_percent = self.hp_cur / self.hp_max * 100
+
+        self.healthBar = arcade.ShapeElementList()
+
+        missingHealth = arcade.create_rectangle(self.center_x, self.top + 10, 50, 6, arcade.csscolor.GRAY)
+        self.healthBar.append(missingHealth)
+
+        health = arcade.create_rectangle(self.center_x - 25 + (hp_percent / 4), self.top + 10, hp_percent / 2, 6, arcade.csscolor.RED)
+        self.healthBar.append(health)
 
 
 class Weapon(arcade.Sprite):
@@ -66,16 +81,15 @@ class Weapon(arcade.Sprite):
         self.cursor_pos_x = 0
         self.cursor_pos_y = 0
 
-        self.cur_weapon_texture = 0
+        #self.cur_weapon_texture = 0
         self.face_dir = RIGHT_FACING
         self.scale = 2
 
+    def giveWeapon(self, weapon):
 
-
-
-
-    def giveWeapon(self, player_x, player_y):
-
+        self.idle_texture_pair = load_weapon_texture_pair(weapon)
+        self.texture = self.idle_texture_pair[self.face_dir]
+        """
         main_path = "sword/sword"
 
         # Load textures for idle weapon
@@ -86,6 +100,8 @@ class Weapon(arcade.Sprite):
         for i in range(1, 4):
             texture = load_weapon_texture_pair(f"{main_path}{i}.png")
             self.swing_textures.append(texture)
+        """
+
 
     def findAngle(self):
 
@@ -96,18 +112,15 @@ class Weapon(arcade.Sprite):
             if self.cursor_pos_x > SCREEN_WIDTH/2:
                 self.angle = angle
             else:
-                if self.cursor_pos_y > SCREEN_HEIGHT / 2:
-                    self.angle = 180 + angle
-                elif self.cursor_pos_y < SCREEN_HEIGHT / 2:
-                    self.angle = 180 + angle
+                self.angle = 180 + angle
         else:
-            print(self.cursor_pos_y, SCREEN_HEIGHT / 2, vector_y, self.angle)
             if self.cursor_pos_y < SCREEN_HEIGHT / 2:
                 self.angle = 270
             elif self.cursor_pos_y > SCREEN_HEIGHT / 2:
                 self.angle = 90
 
     def update_animation(self, delta_time: float = 1/60):
+
         # Idle weapon
         if not self.attack:
             self.texture = self.idle_texture_pair[self.face_dir]
@@ -129,16 +142,6 @@ class Weapon(arcade.Sprite):
                     self.swing_start = True
                     self.findAngle()
 
-            # NEROZUMIM HITBOXUM
-            """
-            self.cur_weapon_texture += 1
-            if self.cur_weapon_texture > 3 * UPDATES_PER_FRAME - 1:
-                self.cur_weapon_texture = 0
-                self.attack = False
-            frame = self.cur_weapon_texture // UPDATES_PER_FRAME
-            direction = self.face_dir
-            self.texture = self.swing_textures[frame][direction]
-            """
 
 class PlayerCharacter(arcade.Sprite):
     def __init__(self):
@@ -154,23 +157,20 @@ class PlayerCharacter(arcade.Sprite):
 
         self.scale = 1
 
-        # Adjust the collision box. Default includes too much empty space
-        # side-to-side. Box is centered at sprite center, (0, 0)
-        #self.points = [[-22, -64], [22, -64], [22, 28], [-22, 28]]
-
         self.shadow_list = arcade.SpriteList()
 
+        # TODO -> MyGame function?
         self.weapon_list = arcade.SpriteList()
-        self.weapons = Weapon()
-        self.weapons.center_x = 32 + TILE_WIDTH + 5
-        self.weapons.center_y = 32 - TILE_WIDTH - 5
-        self.weapon_list.append(self.weapons)
 
+        self.weapon_right = Weapon()
+        self.weapon_list.append(self.weapon_right)
+
+        self.weapon_left = Weapon()
+        self.weapon_list.append(self.weapon_left)
 
         # --- Load Textures ---
 
-
-        # Images from Kenney.nl's Asset Pack 3
+        # Images for walking
         main_path = "player_moves/player"
 
         # Load textures for idle standing
@@ -183,29 +183,8 @@ class PlayerCharacter(arcade.Sprite):
             self.walk_textures.append(texture)
 
 
-
-
-
-    #Netušim co se tu děje
+    #Netušim co se tu děje -> uz vim
     def update_animation(self, delta_time: float = 1 / 60):
-
-        """
-        # Figure out if we need to flip face left or right
-        if self.weapons.attack == True:
-            if self.mouse_pos_x < SCREEN_WIDTH/2 and self.character_face_direction == RIGHT_FACING:
-                self.character_face_direction = LEFT_FACING
-                #self.weapons.face_dir = LEFT_FACING
-            elif self.mouse_pos_x > SCREEN_WIDTH/2 and self.character_face_direction == LEFT_FACING:
-                self.character_face_direction = RIGHT_FACING
-                #self.weapons.face_dir = RIGHT_FACING
-        else:
-            if self.change_x < 0 and self.character_face_direction == RIGHT_FACING:
-                self.character_face_direction = LEFT_FACING
-                self.weapons.face_dir = LEFT_FACING
-            elif self.change_x > 0 and self.character_face_direction == LEFT_FACING:
-                self.character_face_direction = RIGHT_FACING
-                self.weapons.face_dir = RIGHT_FACING
-        """
 
         # Idle animation
         if self.change_x == 0 and self.change_y == 0:
@@ -240,9 +219,6 @@ class PlayerCharacter(arcade.Sprite):
             shadow.center_x = self.center_x
             shadow.center_y = self.center_y - 19
             self.shadow_list.append(shadow)
-
-    def getShadowCenter(self):
-        return [self.shadowCenter.center_x,self.shadowCenter.center_y]
 
     def update(self):
         """ Move the player """
@@ -349,7 +325,20 @@ class MyGame(arcade.Window):
 
         enemy = Enemy()
         enemy.center_x, enemy.center_y = coords
+        enemy.update_healthBar()
         self.enemy_list.append(enemy)
+
+    def dealDMG(self):
+        for enemy in self.hit_enemies:
+            if enemy.can_be_hit:
+                if self.player.weapon_right.attack or self.player.weapon_left.attack:
+                    enemy.hp_cur -= 1
+                    enemy.update_healthBar()
+                    enemy.can_be_hit = False
+                    if enemy.hp_cur == 0:
+                        self.enemy_list.remove(enemy)
+            if not self.player.weapon_right.attack and not self.player.weapon_left.attack:
+                enemy.can_be_hit = True
 
     def set_vsync(self, vsync: bool):
         """ Set if we sync our draws to the monitors vertical sync rate. """
@@ -365,7 +354,14 @@ class MyGame(arcade.Window):
         self.player.center_y = 32 - TILE_WIDTH
         self.player_list.append(self.player)
         self.player.createShadow()
-        self.player.weapons.giveWeapon(self.player.center_x, self.player.center_y)
+
+        self.player.weapon_right.giveWeapon("sword.png") # TODO ? func
+        self.player.weapon_right.center_x = self.player.center_x + 5
+        self.player.weapon_right.center_y = self.player.center_y - 5
+
+        self.player.weapon_left.giveWeapon("axe.png")
+        self.player.weapon_left.center_x = self.player.center_x + 5
+        self.player.weapon_left.center_y = self.player.center_y - 5
 
         # Setup enemies
         self.spawnEnemy([32 + TILE_WIDTH * 2, 32 - TILE_WIDTH])
@@ -383,19 +379,28 @@ class MyGame(arcade.Window):
         self.tile_list.draw()
         self.collider_list.draw()
 
+        # Draw first weapon; if RIGHT_FACING: draw weapon_left
+        self.player.weapon_list[self.player.character_face_direction - 1].draw()
+
         # Draw player
         self.player.shadow_list.draw()
         self.player_list.draw()
-        self.player.weapon_list.draw()
+
+        # Draw 2nd weapon
+        self.player.weapon_list[self.player.character_face_direction].draw()
 
         # Draw enemy
         self.enemy_list.draw()
 
+        for enemy in self.enemy_list: # TODO ? spritelist
+            enemy.healthBar.draw()
+
         # Draw hit boxes
         self.player.draw_hit_box()
-        self.player.weapons.draw_hit_box()
+        self.player.weapon_list.draw_hit_boxes()
         self.enemy_list.draw_hit_boxes()
         self.player.shadow_list.draw_hit_boxes()
+
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -422,37 +427,65 @@ class MyGame(arcade.Window):
         if len(arcade.check_for_collision_with_list(self.player.shadowCenter, self.collider_list)) > 0:
             print("Vlezl jsi do bariéry. GG WP")
 
+        # DMG dealing to enemies
+        if len(self.player.weapon_right.collides_with_list(self.enemy_list)) > 0:
+            self.hit_enemies = self.player.weapon_right.collides_with_list(self.enemy_list)
+            self.dealDMG()
+        elif len(self.player.weapon_left.collides_with_list(self.enemy_list)) > 0:
+            self.hit_enemies = self.player.weapon_left.collides_with_list(self.enemy_list)
+            self.dealDMG()
 
         self.player_list.update()
         self.player_list.update_animation()
         self.player.weapon_list.update_animation()
 
+
         # Call update to move the sprite
         # If using a physics engine, call update player to rely on physics engine
         # for movement, and call physics engine here.
 
-
+        # ?
         arcade.set_viewport(self.player.center_x - SCREEN_WIDTH/2,
                             self.player.center_x + SCREEN_WIDTH/2,
                             self.player.center_y - SCREEN_HEIGHT/2,
                             self.player.center_y + SCREEN_HEIGHT/2)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if self.player.weapons.can_swing:
-            self.player.weapons.attack = True
-            self.player.weapons.can_swing = False
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.player.weapon_right.can_swing and not self.player.weapon_left.attack:
+                self.player.weapon_right.attack = True
+                self.player.weapon_right.can_swing = False
+        elif button == arcade.MOUSE_BUTTON_RIGHT:
+            if self.player.weapon_left.can_swing and not self.player.weapon_right.attack:
+                self.player.weapon_left.attack = True
+                self.player.weapon_left.can_swing = False
+
 
     def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
-        if self.player.weapons.attack is not True:
+
+        if self.player.weapon_right.attack is not True:
             if x < SCREEN_WIDTH/2 and self.player.character_face_direction == RIGHT_FACING:
                 self.player.character_face_direction = LEFT_FACING
-                self.player.weapons.face_dir = LEFT_FACING
+                self.player.weapon_right.face_dir = LEFT_FACING
+                self.player.weapon_left.face_dir = LEFT_FACING
+                self.player.weapon_right.center_y = self.player.center_y - 5 + 5
+                self.player.weapon_left.center_y = self.player.center_y - 5
+
             elif x > SCREEN_WIDTH/2 and self.player.character_face_direction == LEFT_FACING:
                 self.player.character_face_direction = RIGHT_FACING
-                self.player.weapons.face_dir = RIGHT_FACING
-            self.player.weapons.cursor_pos_x = x
-            self.player.weapons.cursor_pos_y = y
-            self.player.weapons.findAngle()
+                self.player.weapon_right.face_dir = RIGHT_FACING
+                self.player.weapon_left.face_dir = RIGHT_FACING
+                self.player.weapon_right.center_y = self.player.center_y - 5
+                self.player.weapon_left.center_y = self.player.center_y - 5 + 5
+
+            self.player.weapon_right.cursor_pos_x = x
+            self.player.weapon_right.cursor_pos_y = y
+            self.player.weapon_right.findAngle()
+
+            self.player.weapon_left.cursor_pos_x = x
+            self.player.weapon_left.cursor_pos_y = y
+            self.player.weapon_left.findAngle()
+
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
