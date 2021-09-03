@@ -1,3 +1,4 @@
+#seks
 import arcade
 from math import *
 
