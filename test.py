@@ -16,7 +16,6 @@ RIGHT_FACING = 0
 LEFT_FACING = 1
 
 
-
 def load_weapon_texture_pair(filename, hit_box_algorithm: str = "Simple"): # Default: "Simple"
     """
     Load a texture pair, with the second being a mirror image.
@@ -41,6 +40,7 @@ def load_texture_pair(filename, hit_box_algorithm: str = "Simple"):
                      flipped_horizontally=True,
                      hit_box_algorithm=hit_box_algorithm)
         ]
+
 
 class Enemy(arcade.Sprite):
 
@@ -328,15 +328,18 @@ class MyGame(arcade.Window):
         enemy.update_healthBar()
         self.enemy_list.append(enemy)
 
-    def dealDMG(self):
+    def dealDMG(self,hand):
         for enemy in self.hit_enemies:
             if enemy.can_be_hit:
-                if self.player.weapon_right.attack or self.player.weapon_left.attack:
+                if self.player.weapon_right.attack and hand == "right":
                     enemy.hp_cur -= 1
-                    enemy.update_healthBar()
                     enemy.can_be_hit = False
-                    if enemy.hp_cur == 0:
-                        self.enemy_list.remove(enemy)
+                elif self.player.weapon_left.attack and hand == "left":
+                    enemy.hp_cur -= 1
+                    enemy.can_be_hit = False
+                enemy.update_healthBar()
+                if enemy.hp_cur == 0:
+                    self.enemy_list.remove(enemy)
             if not self.player.weapon_right.attack and not self.player.weapon_left.attack:
                 enemy.can_be_hit = True
 

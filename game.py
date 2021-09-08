@@ -1,3 +1,5 @@
+import operator
+
 import arcade
 from math import *
 
@@ -7,6 +9,8 @@ TILECOUNTX = 15
 TILECOUNTY = 8
 SCREEN_WIDTH = TILECOUNTX * TILE_WIDTH
 SCREEN_HEIGHT = TILECOUNTY * TILE_WIDTH
+SCREEN_WIDTH = 1080
+SCREEN_HEIGHT = 720
 SCREEN_TITLE = "adventure"
 
 MOVEMENT_SPEED = 2
@@ -86,18 +90,10 @@ class Weapon(arcade.Sprite):
         self.face_dir = RIGHT_FACING
         self.scale = 2
 
-    def giveWeapon(self):  # TODO self.hand_left/right
+    def giveWeapon(self, weapon):  # TODO self.hand_left/right
 
-        main_path = "sword/sword"
-
-        # Load textures for idle weapon
-        self.idle_texture_pair = load_weapon_texture_pair(f"{main_path}1.png")
-
-        # Load textures for weapon swing
-        self.swing_textures = []
-        for i in range(1, 4):
-            texture = load_weapon_texture_pair(f"{main_path}{i}.png")
-            self.swing_textures.append(texture)
+        self.idle_texture_pair = load_weapon_texture_pair(weapon)
+        self.texture = self.idle_texture_pair[self.face_dir]
 
     def findAngle(self):
 
@@ -156,10 +152,12 @@ class PlayerCharacter(arcade.Sprite):
 
         # TODO -> MyGame function?
         self.weapon_list = arcade.SpriteList()
-        self.weapons = Weapon()
-        self.weapons.center_x = 32 + TILE_WIDTH + 5
-        self.weapons.center_y = 32 - TILE_WIDTH - 5
-        self.weapon_list.append(self.weapons)
+
+        self.weapon_right = Weapon()
+        self.weapon_list.append(self.weapon_right)
+
+        self.weapon_left = Weapon()
+        self.weapon_list.append(self.weapon_left)
 
         # --- Load Textures ---
 
@@ -229,7 +227,7 @@ class MyGame(arcade.Window):
     def __init__(self):
 
         # Call the parent class and set up the window
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, fullscreen=False)
 
         arcade.set_background_color([13, 9, 9])
         # arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
@@ -249,6 +247,10 @@ class MyGame(arcade.Window):
         self.down_pressed = False
 
         self.mouse_moved = False
+
+        # Věci pro inventář
+        self.inventory_opened = False
+        self.inv_sprite_list = arcade.ShapeElementList()
 
     def creatingGraphicalMapByLogicalMap(self, listLogicalMap):  # vykreslení políček
 
@@ -320,6 +322,28 @@ class MyGame(arcade.Window):
         enemy.update_healthBar()
         self.enemy_list.append(enemy)
 
+    def dealDMG(self,hand):
+        for enemy in self.hit_enemies:
+            if enemy.can_be_hit:
+                if self.player.weapon_right.attack and hand == "right":
+                    enemy.hp_cur -= 1
+                    enemy.can_be_hit = False
+                if self.player.weapon_left.attack and hand == "left":
+                    enemy.hp_cur -= 1
+                    enemy.can_be_hit = False
+                enemy.update_healthBar()
+                if enemy.hp_cur == 0:
+                    self.enemy_list.remove(enemy)
+            if not self.player.weapon_right.attack and not self.player.weapon_left.attack:
+                enemy.can_be_hit = True
+
+    def drawInventory(self): #TODO
+        bigChunk = arcade.create_rectangle_filled(self.player.center_x + SCREEN_WIDTH/4,
+                                                  self.player.center_y,
+                                                  SCREEN_WIDTH/5*2,
+                                                  SCREEN_HEIGHT/5*4, arcade.csscolor.RED)
+        self.inv_sprite_list.append(bigChunk)
+
     def set_vsync(self, vsync: bool):
         """ Set if we sync our draws to the monitors vertical sync rate. """
         super().set_vsync(vsync)
@@ -334,10 +358,19 @@ class MyGame(arcade.Window):
         self.player.center_y = 32 - TILE_WIDTH
         self.player_list.append(self.player)
         self.player.createShadow()
-        self.player.weapons.giveWeapon()
+
+        self.player.weapon_right.giveWeapon("sword.png") # TODO ? func
+        self.player.weapon_right.center_x = self.player.center_x + 5
+        self.player.weapon_right.center_y = self.player.center_y - 5
+
+        self.player.weapon_left.giveWeapon("axe.png")
+        self.player.weapon_left.center_x = self.player.center_x + 5
+        self.player.weapon_left.center_y = self.player.center_y - 5
 
         # Setup enemies
         self.spawnEnemy([32 + TILE_WIDTH * 2, 32 - TILE_WIDTH])
+
+        self.drawInventory()
 
         # self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.collider_list, gravity_constant = 0)
 
@@ -351,20 +384,30 @@ class MyGame(arcade.Window):
         self.tile_list.draw()
         self.collider_list.draw()
 
+        # Draw first weapon; if RIGHT_FACING: draw weapon_left
+        self.player.weapon_list[self.player.character_face_direction - 1].draw()
+
         # Draw player
         self.player.shadow_list.draw()
         self.player_list.draw()
-        self.player.weapon_list.draw()
+
+        # Draw 2nd weapon
+        self.player.weapon_list[self.player.character_face_direction].draw()
 
         # Draw enemy
         self.enemy_list.draw()
+
+        # Draw inventory
+        # if len(self.inv_sprite_list) == 1:
+        if self.inventory_opened:
+            self.inv_sprite_list.draw()
 
         for enemy in self.enemy_list:  # TODO ? spritelist
             enemy.healthBar.draw()
 
         # Draw hit boxes
         self.player.draw_hit_box()
-        self.player.weapons.draw_hit_box()
+        self.player.weapon_list.draw_hit_boxes()
         self.enemy_list.draw_hit_boxes()
         self.player.shadow_list.draw_hit_boxes()
 
@@ -402,19 +445,17 @@ class MyGame(arcade.Window):
             print("Vlezl jsi do bariéry. GG WP")
 
         # DMG dealing to enemies
-        self.hit_enemies = self.player.weapons.collides_with_list(self.enemy_list)
+        if len(self.player.weapon_right.collides_with_list(self.enemy_list)) > 0:
+            print("right")
+            self.hit_enemies = self.player.weapon_right.collides_with_list(self.enemy_list)
+            self.dealDMG("right")
+        if len(self.player.weapon_left.collides_with_list(self.enemy_list)) > 0:
+            print("left")
+            self.hit_enemies = self.player.weapon_left.collides_with_list(self.enemy_list)
+            self.dealDMG("left")
 
-        if len(self.hit_enemies) > 0:
-            for enemy in self.hit_enemies:
-                if enemy.can_be_hit and self.player.weapons.attack:
-                    print(enemy.hp_cur)
-                    enemy.hp_cur -= 1
-                    enemy.update_healthBar()
-                    enemy.can_be_hit = False
-                    if enemy.hp_cur == 0:
-                        self.enemy_list.remove(enemy)
-                if not self.player.weapons.attack:
-                    enemy.can_be_hit = True
+        # Pohyb inventářem po obrazovce
+        self.inv_sprite_list.move(self.player.change_x, self.player.change_y)
 
         self.player_list.update()
         self.player_list.update_animation()
@@ -431,45 +472,74 @@ class MyGame(arcade.Window):
                             self.player.center_y + SCREEN_HEIGHT / 2)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        if self.player.weapons.can_swing:
-            self.player.weapons.attack = True
-            self.player.weapons.can_swing = False
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.player.weapon_right.can_swing and not self.player.weapon_left.attack:
+                self.player.weapon_right.attack = True
+                self.player.weapon_right.can_swing = False
+        elif button == arcade.MOUSE_BUTTON_RIGHT:
+            if self.player.weapon_left.can_swing and not self.player.weapon_right.attack:
+                self.player.weapon_left.attack = True
+                self.player.weapon_left.can_swing = False
 
     def on_mouse_motion(self, x: float, y: float, dx: float, dy: float):
-        if self.player.weapons.attack is not True:
-            if x < SCREEN_WIDTH / 2 and self.player.character_face_direction == RIGHT_FACING:
+
+        if self.player.weapon_right.attack is not True:
+            if x < SCREEN_WIDTH/2 and self.player.character_face_direction == RIGHT_FACING:
                 self.player.character_face_direction = LEFT_FACING
-                self.player.weapons.face_dir = LEFT_FACING
-            elif x > SCREEN_WIDTH / 2 and self.player.character_face_direction == LEFT_FACING:
+                self.player.weapon_right.face_dir = LEFT_FACING
+                self.player.weapon_left.face_dir = LEFT_FACING
+                self.player.weapon_right.center_y = self.player.center_y - 5 + 5
+                self.player.weapon_left.center_y = self.player.center_y - 5
+
+            elif x > SCREEN_WIDTH/2 and self.player.character_face_direction == LEFT_FACING:
                 self.player.character_face_direction = RIGHT_FACING
-                self.player.weapons.face_dir = RIGHT_FACING
-            self.player.weapons.cursor_pos_x = x
-            self.player.weapons.cursor_pos_y = y
-            self.player.weapons.findAngle()
+                self.player.weapon_right.face_dir = RIGHT_FACING
+                self.player.weapon_left.face_dir = RIGHT_FACING
+                self.player.weapon_right.center_y = self.player.center_y - 5
+                self.player.weapon_left.center_y = self.player.center_y - 5 + 5
+
+            # cancer ngl
+            self.player.weapon_right.cursor_pos_x = x
+            self.player.weapon_right.cursor_pos_y = y
+            self.player.weapon_right.findAngle()
+
+            self.player.weapon_left.cursor_pos_x = x
+            self.player.weapon_left.cursor_pos_y = y
+            self.player.weapon_left.findAngle()
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
-
-        if key == arcade.key.UP:
+        """Tlačítka pro pohyb"""
+        if key == arcade.key.W:
             self.up_pressed = True
-        elif key == arcade.key.DOWN:
+        elif key == arcade.key.S:
             self.down_pressed = True
-        elif key == arcade.key.LEFT:
+        elif key == arcade.key.A:
             self.left_pressed = True
-        elif key == arcade.key.RIGHT:
+        elif key == arcade.key.D:
             self.right_pressed = True
+
+        # Tlačítka pro inventář
+        if key == arcade.key.TAB:
+            self.inventory_opened = operator.not_(self.inventory_opened)
+
+        """if key == arcade.key.F11:
+            self.set_fullscreen(not self.fullscreen)
+            self.set_viewport(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT)"""
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
 
-        if key == arcade.key.UP:
+        if key == arcade.key.W:
             self.up_pressed = False
-        elif key == arcade.key.DOWN:
+        elif key == arcade.key.S:
             self.down_pressed = False
-        elif key == arcade.key.LEFT:
+        elif key == arcade.key.A:
             self.left_pressed = False
-        elif key == arcade.key.RIGHT:
+        elif key == arcade.key.D:
             self.right_pressed = False
+
+
 
 
 def main():
@@ -481,3 +551,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#blbost
