@@ -1,13 +1,15 @@
-import operator
-
 import arcade
 from math import *
+from Player import *
+from Texture import *
+from Enemy import *
+import operator
 
 # Constants
 TILE_WIDTH = 64
 TILECOUNTX = 15
 TILECOUNTY = 8
-SCREEN_WIDTH = TILECOUNTX * TILE_WIDTH
+SCREEN_WIDTH = TILECOUNTX * TILE_WIDTH # ???
 SCREEN_HEIGHT = TILECOUNTY * TILE_WIDTH
 SCREEN_WIDTH = 1080
 SCREEN_HEIGHT = 720
@@ -18,208 +20,6 @@ UPDATES_PER_FRAME = 8
 
 RIGHT_FACING = 0
 LEFT_FACING = 1
-
-
-def load_weapon_texture_pair(filename, hit_box_algorithm: str = "Simple"):  # Default: "Simple"
-    """
-    Load a texture pair, with the second being a mirror image.
-    """
-    return [
-        arcade.load_texture(filename,
-                            hit_box_algorithm=hit_box_algorithm),
-        arcade.load_texture(filename,
-                            flipped_vertically=True,
-                            hit_box_algorithm=hit_box_algorithm)
-    ]
-
-
-def load_texture_pair(filename, hit_box_algorithm: str = "Simple"):
-    """
-    Load a texture pair, with the second being a mirror image of the first.
-    Useful when doing animations and the character can face left/right.
-    """
-    return [
-        arcade.load_texture(filename,
-                            hit_box_algorithm=hit_box_algorithm),
-        arcade.load_texture(filename,
-                            flipped_horizontally=True,
-                            hit_box_algorithm=hit_box_algorithm)
-    ]
-
-
-class Enemy(arcade.Sprite):
-
-    def __init__(self):
-        super().__init__()
-
-        self.hp_max = 5
-        self.hp_cur = self.hp_max
-        self.texture = arcade.load_texture("ememy.png")
-        self.healthBar = arcade.ShapeElementList()
-
-        self.can_be_hit = True
-
-    def update_healthBar(self):  # game function? TODO
-        hp_percent = self.hp_cur / self.hp_max * 100
-
-        self.healthBar = arcade.ShapeElementList()
-
-        missingHealth = arcade.create_rectangle(self.center_x, self.top + 10, 50, 6, arcade.csscolor.GRAY)
-        self.healthBar.append(missingHealth)
-
-        health = arcade.create_rectangle(self.center_x - 25 + (hp_percent / 4), self.top + 10, hp_percent / 2, 6,
-                                         arcade.csscolor.RED)
-        self.healthBar.append(health)
-
-
-class Weapon(arcade.Sprite):
-
-    def __init__(self):
-        super().__init__()
-
-        self.attack = False
-        self.can_swing = True
-        self.swing_start = True
-        self.swing_angle = 90
-        self.angle_dif = [-6, 6]
-
-        self.cursor_pos_x = 0
-        self.cursor_pos_y = 0
-
-        self.cur_weapon_texture = 0
-        self.face_dir = RIGHT_FACING
-        self.scale = 2
-
-    def giveWeapon(self, weapon):  # TODO self.hand_left/right
-
-        self.idle_texture_pair = load_weapon_texture_pair(weapon)
-        self.texture = self.idle_texture_pair[self.face_dir]
-
-    def findAngle(self):
-
-        vector_x = self.cursor_pos_x - SCREEN_WIDTH / 2
-        vector_y = self.cursor_pos_y - SCREEN_HEIGHT / 2
-        if vector_x != 0:
-            angle = degrees(atan(vector_y / vector_x))
-            if self.cursor_pos_x > SCREEN_WIDTH / 2:
-                self.angle = angle
-            else:
-                self.angle = 180 + angle
-        else:
-            if self.cursor_pos_y < SCREEN_HEIGHT / 2:
-                self.angle = 270
-            elif self.cursor_pos_y > SCREEN_HEIGHT / 2:
-                self.angle = 90
-
-    def update_animation(self, delta_time: float = 1 / 60):
-        # Idle weapon ??
-        if not self.attack:
-            self.texture = self.idle_texture_pair[self.face_dir]
-            return
-
-        # Weapon swing
-        if self.attack:
-            if self.swing_start:
-                self.angle -= self.swing_angle / 2 * (self.angle_dif[self.face_dir] / self.angle_dif[1])
-                self.swing_start = False
-            else:
-                if self.swing_angle > 0:
-                    self.swing_angle += self.angle_dif[0]
-                    self.angle += self.angle_dif[self.face_dir]
-                else:
-                    self.swing_angle = 90
-                    self.attack = False
-                    self.can_swing = True
-                    self.swing_start = True
-                    self.findAngle()
-
-
-class PlayerCharacter(arcade.Sprite):
-    def __init__(self):
-
-        # Set up parent class
-        super().__init__()
-
-        # Default to face-right
-        self.character_face_direction = RIGHT_FACING
-
-        # Used for flipping between image sequences
-        self.cur_texture = 0
-
-        self.scale = 1
-
-        self.shadow_list = arcade.SpriteList()
-
-        # TODO -> MyGame function?
-        self.weapon_list = arcade.SpriteList()
-
-        self.weapon_right = Weapon()
-        self.weapon_list.append(self.weapon_right)
-
-        self.weapon_left = Weapon()
-        self.weapon_list.append(self.weapon_left)
-
-        # --- Load Textures ---
-
-        # Images for walking
-        main_path = "player_moves/player"
-
-        # Load textures for idle standing
-        self.idle_texture_pair = load_texture_pair(f"{main_path}1.png")
-
-        # Load textures for walking
-        self.walk_textures = []
-        for i in range(1, 5):
-            texture = load_texture_pair(f"{main_path}{i}.png")
-            self.walk_textures.append(texture)
-
-    # Netušim co se tu děje -> uz vim
-    def update_animation(self, delta_time: float = 1 / 60):
-
-        # Idle animation
-        if self.change_x == 0 and self.change_y == 0:
-            self.texture = self.idle_texture_pair[self.character_face_direction]
-            return
-
-        # Walking animation
-        self.cur_texture += 1
-        if self.cur_texture > 4 * UPDATES_PER_FRAME - 1:
-            self.cur_texture = 0
-        frame = self.cur_texture // UPDATES_PER_FRAME
-        direction = self.character_face_direction
-        self.texture = self.walk_textures[frame][direction]
-
-    def createShadow(self):
-
-        self.shadowCenter = arcade.Sprite("shadow/shadowCenter.png", 0.5)
-        self.shadowTop = arcade.Sprite("shadow/shadow1.png", 0.5)
-        self.shadowBot = arcade.Sprite("shadow/shadow1.png", 0.5)
-        self.shadowLeft = arcade.Sprite("shadow/shadow2.png", 0.5)
-        self.shadowRight = arcade.Sprite("shadow/shadow2.png", 0.5)
-
-        flip = False
-        shadows = [self.shadowTop, self.shadowBot, self.shadowLeft, self.shadowRight, self.shadowCenter]
-
-        for shadow in shadows:
-            if flip:
-                shadow.angle = 180
-                flip = False
-            else:
-                flip = True
-            shadow.center_x = self.center_x
-            shadow.center_y = self.center_y - 19
-            self.shadow_list.append(shadow)
-
-    def update(self):
-        """ Move the player """
-        # Move player.
-        # Remove these lines if physics engine is moving player.
-
-        self.center_x += self.change_x
-        self.center_y += self.change_y
-
-        self.shadow_list.move(self.change_x, self.change_y)
-        self.weapon_list.move(self.change_x, self.change_y)
 
 
 class MyGame(arcade.Window):
@@ -246,12 +46,13 @@ class MyGame(arcade.Window):
         self.up_pressed = False
         self.down_pressed = False
 
-        self.mouse_moved = False
+        self.mouse_moved = False # ???
 
         # Věci pro inventář
         self.inventory_opened = False
         self.inv_sprite_list = arcade.ShapeElementList()
 
+    # TODO class Map
     def creatingGraphicalMapByLogicalMap(self, listLogicalMap):  # vykreslení políček
 
         # přečte z texťáku s mapou písmenka a přepíše je do 2 rozměrného pole
@@ -348,7 +149,7 @@ class MyGame(arcade.Window):
         """ Set if we sync our draws to the monitors vertical sync rate. """
         super().set_vsync(vsync)
 
-    def setup(self):
+    def setup(self): # TODO package
         """ Set up the game here. Call this function to restart the game. """
 
         # Setup player
@@ -359,11 +160,11 @@ class MyGame(arcade.Window):
         self.player_list.append(self.player)
         self.player.createShadow()
 
-        self.player.weapon_right.giveWeapon("sword.png") # TODO ? func
+        self.player.weapon_right.giveWeapon("assets/weapons/sword.png") # TODO ? func
         self.player.weapon_right.center_x = self.player.center_x + 5
         self.player.weapon_right.center_y = self.player.center_y - 5
 
-        self.player.weapon_left.giveWeapon("axe.png")
+        self.player.weapon_left.giveWeapon("assets/weapons/axe.png")
         self.player.weapon_left.center_x = self.player.center_x + 5
         self.player.weapon_left.center_y = self.player.center_y - 5
 
@@ -446,11 +247,11 @@ class MyGame(arcade.Window):
 
         # DMG dealing to enemies
         if len(self.player.weapon_right.collides_with_list(self.enemy_list)) > 0:
-            print("right")
+            #print("right")
             self.hit_enemies = self.player.weapon_right.collides_with_list(self.enemy_list)
             self.dealDMG("right")
         if len(self.player.weapon_left.collides_with_list(self.enemy_list)) > 0:
-            print("left")
+            #print("left")
             self.hit_enemies = self.player.weapon_left.collides_with_list(self.enemy_list)
             self.dealDMG("left")
 
@@ -551,5 +352,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-#blbost

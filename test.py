@@ -171,7 +171,7 @@ class PlayerCharacter(arcade.Sprite):
         # --- Load Textures ---
 
         # Images for walking
-        main_path = "player_moves/player"
+        main_path = "assets/player_moves/player"
 
         # Load textures for idle standing
         self.idle_texture_pair = load_texture_pair(f"{main_path}1.png")
@@ -201,11 +201,11 @@ class PlayerCharacter(arcade.Sprite):
 
     def createShadow(self):
 
-        self.shadowCenter = arcade.Sprite("shadow/shadowCenter.png", 0.5)
-        self.shadowTop = arcade.Sprite("shadow/shadow1.png", 0.5)
-        self.shadowBot = arcade.Sprite("shadow/shadow1.png", 0.5)
-        self.shadowLeft = arcade.Sprite("shadow/shadow2.png", 0.5)
-        self.shadowRight = arcade.Sprite("shadow/shadow2.png", 0.5)
+        self.shadowCenter = arcade.Sprite("assets/shadow/shadowCenter.png", 0.5)
+        self.shadowTop = arcade.Sprite("assets/shadow/shadow1.png", 0.5)
+        self.shadowBot = arcade.Sprite("assets/shadow/shadow1.png", 0.5)
+        self.shadowLeft = arcade.Sprite("assets/shadow/shadow2.png", 0.5)
+        self.shadowRight = arcade.Sprite("assets/shadow/shadow2.png", 0.5)
 
         flip = False
         shadows = [self.shadowTop, self.shadowBot, self.shadowLeft, self.shadowRight, self.shadowCenter]
