@@ -149,7 +149,7 @@ class MyGame(arcade.Window):
         """ Set if we sync our draws to the monitors vertical sync rate. """
         super().set_vsync(vsync)
 
-    def setup(self): # TODO package
+    def setup(self): # TODO package?
         """ Set up the game here. Call this function to restart the game. """
 
         # Setup player
@@ -173,6 +173,20 @@ class MyGame(arcade.Window):
 
         self.drawInventory()
 
+        # TODO map draw
+        self.stump_list = arcade.SpriteList()
+        self.stump = arcade.Sprite("assets/tree0.png")
+        self.stump.center_x = 20
+        self.stump.center_y = -30
+        self.stump_list.append(self.stump)
+
+        self.tree_list = arcade.SpriteList()
+        self.tree = arcade.Sprite("assets/tree1.png")
+        self.tree.center_x = 20
+        self.tree.center_y = -30
+        self.tree_list.append(self.tree)
+
+
         # self.physics_engine = arcade.PhysicsEnginePlatformer(self.player, self.collider_list, gravity_constant = 0)
 
     def on_draw(self):
@@ -182,8 +196,11 @@ class MyGame(arcade.Window):
         # Code to draw the screen goes here
 
         # Draw map
-        self.tile_list.draw()
-        self.collider_list.draw()
+        #self.tile_list.draw()
+        #self.collider_list.draw()
+
+        self.stump_list.draw()
+        self.tree_list.draw()
 
         # Draw first weapon; if RIGHT_FACING: draw weapon_left
         self.player.weapon_list[self.player.character_face_direction - 1].draw()
@@ -197,6 +214,10 @@ class MyGame(arcade.Window):
 
         # Draw enemy
         self.enemy_list.draw()
+
+        for i in self.player.collides_with_list(self.tree_list):
+            if i.bottom < self.player.bottom:
+                i.draw()
 
         # Draw inventory
         # if len(self.inv_sprite_list) == 1:
